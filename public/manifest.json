@@ -1,0 +1,16 @@
+{
+  "short_name": "AR Physio Care",
+  "name": "AR Physio Care - Dr. Abdul Rouf",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0B192C",
+  "theme_color": "#00A896",
+  "display": "standalone",
+  "orientation": "portrait"
+}

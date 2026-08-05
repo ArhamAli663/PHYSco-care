@@ -1,0 +1,18 @@
+{
+  "name": "physco-care",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Dr. Abdul Rouf Physiotherapy & Rehabilitation Web Portal",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "firebase": "^11.3.0",
+    "vite": "^6.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
+  }
+}
