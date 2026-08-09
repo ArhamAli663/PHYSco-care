@@ -142,50 +142,55 @@ export async function registerUser(email, password, name, phone) {
 export async function loginUser(email, password) {
   const cleanEmail = email.toLowerCase().trim();
   const isAdminCredentials = (cleanEmail === 'roufag930@gmail.com' && password === 'rouf@663');
-  
+
   let userData = null;
 
-  if (isAdminCredentials) {
+  // Always try Firebase Auth first — this is essential for cross-device Firestore access
+  if (isFirebaseConnected && auth) {
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const role = userCred.user.email.toLowerCase() === 'roufag930@gmail.com' ? 'doctor' : 'patient';
+      userData = {
+        uid: userCred.user.uid,
+        email: userCred.user.email,
+        name: userCred.user.displayName || email.split('@')[0],
+        role
+      };
+    } catch (firebaseErr) {
+      console.warn('Firebase Auth signin:', firebaseErr.code, firebaseErr.message);
+    }
+  }
+
+  // If Firebase Auth failed but these are the doctor's known credentials, build session manually
+  if (!userData && isAdminCredentials) {
     userData = {
+      uid: 'doctor_rouf',
       email: 'roufag930@gmail.com',
       name: 'Dr. Abdul Rouf',
       role: 'doctor',
       phone: '03424437289'
     };
-    setCurrentSession(userData);
-    return userData;
   }
 
-  if (isFirebaseConnected && auth) {
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      userData = {
-        email: userCred.user.email,
-        name: userCred.user.displayName || email.split('@')[0],
-        role: userCred.user.email === 'roufag930@gmail.com' ? 'doctor' : 'patient'
-      };
-    } catch (e) {
-      console.warn("Firebase signin check fallback...");
-    }
-  }
-
+  // Last resort: check localStorage registered users
   if (!userData) {
     const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_USERS) || '[]');
     const match = users.find(u => u.email === cleanEmail && u.password === password);
     if (match) {
       userData = {
+        uid: match.uid || cleanEmail,
         email: match.email,
         name: match.name,
         phone: match.phone || '',
         role: match.role || 'patient'
       };
     } else {
-      throw new Error("Invalid email or password. Please check your credentials.");
+      throw new Error('Invalid email or password. Please check your credentials.');
     }
   }
 
   setCurrentSession(userData);
-  return { uid: userData.uid || cleanEmail, ...userData };
+  return userData;
 }
 
 // Real Google OAuth Authentication
