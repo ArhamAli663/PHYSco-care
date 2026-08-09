@@ -230,10 +230,10 @@ export async function logoutUser() {
   setCurrentSession(null);
 }
 
-// Appointment Management
 export async function createAppointment(appointmentData) {
+  const aptId = 'apt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const newApt = {
-    id: 'apt_' + Date.now(),
+    id: aptId,
     fee: 1000,
     status: 'Pending',
     createdAt: new Date().toISOString(),
@@ -242,8 +242,11 @@ export async function createAppointment(appointmentData) {
 
   if (isFirebaseConnected && db) {
     try {
-      await addDoc(collection(db, 'appointments'), newApt);
-    } catch (e) {}
+      const docRef = await addDoc(collection(db, 'appointments'), newApt);
+      newApt.firebaseId = docRef.id;
+    } catch (e) {
+      console.warn("Firestore createAppointment notice:", e.message);
+    }
   }
 
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
@@ -263,7 +266,11 @@ export async function getAppointments() {
       } catch (err) {
         snapshot = await getDocs(collection(db, 'appointments'));
       }
-      snapshot.forEach(doc => firebaseList.push({ firebaseId: doc.id, ...doc.data() }));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const aptId = data.id || docSnap.id;
+        firebaseList.push({ ...data, id: aptId, firebaseId: docSnap.id });
+      });
     } catch (e) {
       console.warn("Firestore appointments fetch notice:", e.message);
     }
@@ -274,16 +281,24 @@ export async function getAppointments() {
   // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102)
   const mergedMap = new Map();
   localList.forEach(item => {
-    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      mergedMap.set(item.id, item);
+    if (item) {
+      const key = item.id || item.firebaseId;
+      if (key && key !== 'apt_101' && key !== 'apt_102') {
+        item.id = key;
+        mergedMap.set(key, item);
+      }
     }
   });
+
   firebaseList.forEach(item => {
-    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      // Prefer item with status updates
-      const existing = mergedMap.get(item.id);
-      if (!existing || item.updatedAt > (existing.updatedAt || '')) {
-        mergedMap.set(item.id, item);
+    if (item) {
+      const key = item.id || item.firebaseId;
+      if (key && key !== 'apt_101' && key !== 'apt_102') {
+        item.id = key;
+        const existing = mergedMap.get(key);
+        if (!existing || (item.updatedAt || '') >= (existing.updatedAt || '')) {
+          mergedMap.set(key, item);
+        }
       }
     }
   });
@@ -295,7 +310,7 @@ export async function getAppointments() {
 
 export async function updateAppointmentStatus(id, newStatus) {
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
-  const item = list.find(a => a.id === id);
+  const item = list.find(a => a.id === id || a.firebaseId === id);
   if (item) {
     item.status = newStatus;
     item.updatedAt = new Date().toISOString();
@@ -304,14 +319,23 @@ export async function updateAppointmentStatus(id, newStatus) {
 
   if (isFirebaseConnected && db) {
     try {
-      const q = query(collection(db, 'appointments'), where('id', '==', id));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(async (docSnap) => {
-        await updateDoc(doc(db, 'appointments', docSnap.id), {
+      // 1. Update doc directly if id matches a Firestore doc ID
+      try {
+        await updateDoc(doc(db, 'appointments', id), {
           status: newStatus,
           updatedAt: new Date().toISOString()
         });
-      });
+      } catch (err) {
+        // 2. Query by 'id' field if document ID is different
+        const q = query(collection(db, 'appointments'), where('id', '==', id));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(async (docSnap) => {
+          await updateDoc(doc(db, 'appointments', docSnap.id), {
+            status: newStatus,
+            updatedAt: new Date().toISOString()
+          });
+        });
+      }
     } catch (e) {
       console.warn('Firebase status update error:', e.message);
     }

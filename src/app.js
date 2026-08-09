@@ -442,6 +442,7 @@ appointmentForm?.addEventListener('submit', async (e) => {
     appointmentForm.reset();
     setupMinDate();
     renderPatientAppointmentStatus();
+    renderDoctorPortalData();
   } catch (err) {
     showToast('Error saving appointment. Try again.');
   }
