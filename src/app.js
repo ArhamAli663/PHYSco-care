@@ -54,6 +54,7 @@ const tbodyAppointments = document.getElementById('doctor-appointments-tbody');
 const doctorQaList = document.getElementById('doctor-qa-list');
 const metricTotalApts = document.getElementById('metric-total-apts');
 const metricPendingApts = document.getElementById('metric-pending-apts');
+const metricPendingQa = document.getElementById('metric-pending-qa');
 // Theme Toggle System (Dark / Light Mode)
 function setupThemeSystem() {
   const headerToggle = document.getElementById('theme-toggle-btn');
@@ -697,20 +698,32 @@ async function renderPatientReviews() {
 
 // Doctor Portal Data Renderer
 async function renderDoctorPortalData() {
-  const appointments = await getAppointments();
-  const questions = await getQuestions();
+  let appointments = [];
+  let questions = [];
+
+  try {
+    appointments = await getAppointments();
+  } catch (e) { console.warn('getAppointments error:', e); }
+
+  try {
+    questions = await getQuestions();
+  } catch (e) { console.warn('getQuestions error:', e); }
 
   // Metrics
-  if (metricTotalApts) metricTotalApts.textContent = appointments.length;
-  if (metricPendingApts) metricPendingApts.textContent = appointments.filter(a => a.status === 'Pending').length;
-  if (metricPendingQa) metricPendingQa.textContent = questions.filter(q => !q.answer).length;
+  const elTotal = document.getElementById('metric-total-apts');
+  const elPending = document.getElementById('metric-pending-apts');
+  const elQa = document.getElementById('metric-pending-qa');
+  if (elTotal) elTotal.textContent = appointments.length;
+  if (elPending) elPending.textContent = appointments.filter(a => a.status === 'Pending').length;
+  if (elQa) elQa.textContent = questions.filter(q => !q.answer).length;
 
   // Appointments Table
-  if (tbodyAppointments) {
+  const tbody = document.getElementById('doctor-appointments-tbody');
+  if (tbody) {
     if (appointments.length === 0) {
-      tbodyAppointments.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">No appointments booked yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">No appointments booked yet.</td></tr>`;
     } else {
-      tbodyAppointments.innerHTML = appointments.map(apt => {
+      tbody.innerHTML = appointments.map(apt => {
         const rawPhone = (apt.patientPhone || '').replace(/[^0-9]/g, '');
         const waPhone = rawPhone.startsWith('0') ? '92' + rawPhone.slice(1) : rawPhone;
 
