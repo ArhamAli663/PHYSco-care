@@ -21,6 +21,8 @@ import {
 
 let currentUser = getCurrentSession();
 let isRegisterMode = false;
+let cacheLiveApts = null;
+let cacheLiveQuestions = null;
 
 // DOM Element References
 const publicView = document.getElementById('public-view');
@@ -161,15 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Live Realtime Firestore Listeners across all devices & browsers
   subscribeAppointments((liveApts) => {
+    cacheLiveApts = liveApts;
     if (currentUser && currentUser.role === 'doctor') {
-      renderDoctorPortalData(liveApts, null);
+      renderDoctorPortalData(liveApts, cacheLiveQuestions);
     }
     renderPatientAppointmentStatus(liveApts);
   });
 
   subscribeQuestions((liveQuestions) => {
+    cacheLiveQuestions = liveQuestions;
     if (currentUser && currentUser.role === 'doctor') {
-      renderDoctorPortalData(null, liveQuestions);
+      renderDoctorPortalData(cacheLiveApts, liveQuestions);
     }
     renderPublicQa(liveQuestions);
   });
@@ -508,11 +512,12 @@ appointmentForm?.addEventListener('submit', async (e) => {
   if (!timeSlot) { showToast('Please select a time slot between 4:00 PM and 10:00 PM.', 'error'); return; }
 
   try {
+    const patientUid = currentUser.uid || currentUser.email || ('uid_' + Date.now());
     await createAppointment({
       patientName: name,
       patientPhone: phone,
       patientEmail: currentUser.email || email,
-      patientUid: currentUser.uid,
+      patientUid: patientUid,
       date,
       timeSlot,
       issue
@@ -569,20 +574,21 @@ async function renderPatientAppointmentStatus(preLoadedApts = null) {
   const userEmail = (currentUser.email || '').toLowerCase().trim();
   const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
   const userName = (currentUser.name || '').toLowerCase().trim();
+  const userUid = (currentUser.uid || '').trim();
 
   // Filter appointments belonging to this patient by uid, email, phone, or name
-  const userUid = currentUser.uid || '';
   const myApts = allApts.filter(a => {
     const aptEmail = (a.patientEmail || '').toLowerCase().trim();
     const aptPhone = (a.patientPhone || '').replace(/[^0-9]/g, '');
     const aptName = (a.patientName || '').toLowerCase().trim();
-    const aptUid = a.patientUid || '';
+    const aptUid = (a.patientUid || '').trim();
 
     return (
       (userUid && aptUid && aptUid === userUid) ||
       (userEmail && aptEmail && aptEmail === userEmail) ||
       (userPhone && aptPhone && aptPhone === userPhone) ||
-      (userName && aptName && aptName === userName)
+      (userName && aptName && aptName === userName) ||
+      (!userEmail && !userUid && !aptEmail) // Safety fallback
     );
   });
 

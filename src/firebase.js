@@ -123,10 +123,15 @@ export async function registerUser(email, password, name, phone) {
   if (isFirebaseConnected && auth) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      userData.uid = userCredential.user.uid;
       await addDoc(collection(db, 'users'), { ...userData, uid: userCredential.user.uid });
     } catch (err) {
       console.warn("Firebase register notice:", err.message);
     }
+  }
+
+  if (!userData.uid) {
+    userData.uid = 'uid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   }
 
   const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_USERS) || '[]');
@@ -206,6 +211,7 @@ export async function loginWithGoogle() {
       const isDoctor = (user.email.toLowerCase().trim() === 'roufag930@gmail.com');
       
       const userData = {
+        uid: user.uid,
         email: user.email,
         name: user.displayName || user.email.split('@')[0],
         photoURL: user.photoURL || '',
@@ -278,9 +284,11 @@ function normalizeAppointment(item, docId) {
   return {
     id: key,
     firebaseId: docId || item.firebaseId || key,
+    _docId: item._docId || docId || '',
     patientName: item.patientName || item.name || 'Patient',
     patientEmail: item.patientEmail || item.email || 'No Email',
     patientPhone: item.patientPhone || item.phone || 'N/A',
+    patientUid: item.patientUid || item.uid || '',
     date: item.date || (createdStr ? createdStr.split('T')[0] : 'N/A'),
     timeSlot: item.timeSlot || item.time || 'N/A',
     issue: item.issue || item.condition || item.reason || '',
