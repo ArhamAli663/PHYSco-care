@@ -144,12 +144,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showDoctorPortalView();
   }
 
-  // Auto-refresh patient appointment status every 30 seconds (live updates when doctor approves)
-  setInterval(() => {
-    if (currentUser && currentUser.role !== 'doctor') {
-      renderPatientAppointmentStatus();
+  // Auto-refresh live data every 5 seconds (updates Doctor Portal and Patient Status live)
+  setInterval(async () => {
+    if (currentUser && currentUser.role === 'doctor') {
+      await renderDoctorPortalData();
+    } else {
+      await renderPatientAppointmentStatus();
     }
-  }, 30000);
+  }, 5000);
 });
 
 // Mobile Navigation Toggle

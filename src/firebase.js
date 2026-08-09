@@ -287,8 +287,6 @@ function normalizeAppointment(item, docId) {
 }
 
 export async function getAppointments() {
-  const clearedCutoff = localStorage.getItem('dr_rouf_apts_cleared_timestamp');
-
   let firebaseList = [];
   if (isFirebaseConnected && db) {
     try {
@@ -311,23 +309,19 @@ export async function getAppointments() {
   const localRaw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
   const localList = localRaw.map(item => normalizeAppointment(item, item?.id)).filter(item => item && !item.deleted);
 
-  // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102) & pre-cleared items
+  // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102)
   const mergedMap = new Map();
   localList.forEach(item => {
     if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      if (!clearedCutoff || item.createdAt > clearedCutoff) {
-        mergedMap.set(item.id, item);
-      }
+      mergedMap.set(item.id, item);
     }
   });
 
   firebaseList.forEach(item => {
     if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      if (!clearedCutoff || item.createdAt > clearedCutoff) {
-        const existing = mergedMap.get(item.id);
-        if (!existing || item.updatedAt >= existing.updatedAt) {
-          mergedMap.set(item.id, item);
-        }
+      const existing = mergedMap.get(item.id);
+      if (!existing || item.updatedAt >= existing.updatedAt) {
+        mergedMap.set(item.id, item);
       }
     }
   });
@@ -372,7 +366,6 @@ export async function updateAppointmentStatus(id, newStatus) {
 
 export async function clearAllAppointments() {
   localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify([]));
-  localStorage.setItem('dr_rouf_apts_cleared_timestamp', new Date().toISOString());
 
   if (isFirebaseConnected && db) {
     try {
@@ -396,7 +389,6 @@ export async function clearAllAppointments() {
 
 export async function clearAllQuestions() {
   localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify([]));
-  localStorage.setItem('dr_rouf_questions_cleared_timestamp', new Date().toISOString());
 
   if (isFirebaseConnected && db) {
     try {
@@ -464,8 +456,6 @@ export async function createQuestion(patientName, patientEmail, questionText) {
 }
 
 export async function getQuestions() {
-  const clearedCutoff = localStorage.getItem('dr_rouf_questions_cleared_timestamp');
-
   let firebaseList = [];
   if (isFirebaseConnected && db) {
     try {
@@ -491,19 +481,15 @@ export async function getQuestions() {
   const mergedMap = new Map();
   localList.forEach(item => {
     if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
-      if (!clearedCutoff || item.createdAt > clearedCutoff) {
-        mergedMap.set(item.id, item);
-      }
+      mergedMap.set(item.id, item);
     }
   });
 
   firebaseList.forEach(item => {
     if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
-      if (!clearedCutoff || item.createdAt > clearedCutoff) {
-        const existing = mergedMap.get(item.id);
-        if (!existing || item.answer) {
-          mergedMap.set(item.id, item);
-        }
+      const existing = mergedMap.get(item.id);
+      if (!existing || item.answer) {
+        mergedMap.set(item.id, item);
       }
     }
   });
