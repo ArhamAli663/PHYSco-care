@@ -440,12 +440,6 @@ btnDoctorLogout?.addEventListener('click', handleLogout);
 appointmentForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  if (!currentUser) {
-    showToast('Please log in or register first to complete your booking.');
-    openModal();
-    return;
-  }
-
   const name = document.getElementById('patient-name').value;
   const phone = document.getElementById('patient-phone').value;
   const email = document.getElementById('patient-email').value;
@@ -454,8 +448,21 @@ appointmentForm?.addEventListener('submit', async (e) => {
   const issue = document.getElementById('patient-issue').value;
 
   if (!timeSlot) {
-    showToast('Please select a time slot between 4:00 PM and 10:00 PM.');
+    showToast('Please select a time slot between 4:00 PM and 10:00 PM.', 'error');
     return;
+  }
+
+  // Ensure active patient session for guest bookers
+  if (!currentUser) {
+    currentUser = {
+      uid: 'pt_' + Date.now(),
+      name: name || 'Patient',
+      email: email || 'patient@example.com',
+      phone: phone || '',
+      role: 'patient'
+    };
+    localStorage.setItem('dr_rouf_user', JSON.stringify(currentUser));
+    renderUserHeaderState();
   }
 
   try {
@@ -471,10 +478,10 @@ appointmentForm?.addEventListener('submit', async (e) => {
     showToast(`✅ Appointment booked for ${date} at ${timeSlot}! Fee: 1,000 RS. Awaiting doctor approval.`);
     appointmentForm.reset();
     setupMinDate();
-    renderPatientAppointmentStatus();
-    renderDoctorPortalData();
+    await renderPatientAppointmentStatus();
+    await renderDoctorPortalData();
   } catch (err) {
-    showToast('Error saving appointment. Try again.');
+    showToast('Error saving appointment. Try again.', 'error');
   }
 });
 
@@ -485,18 +492,24 @@ askQuestionForm?.addEventListener('submit', async (e) => {
   const questionText = document.getElementById('question-text').value;
 
   if (!currentUser) {
-    showToast('Please log in or register first to post a question.');
-    openModal();
-    return;
+    currentUser = {
+      uid: 'pt_' + Date.now(),
+      name: 'Patient',
+      email: 'patient@example.com',
+      role: 'patient'
+    };
+    localStorage.setItem('dr_rouf_user', JSON.stringify(currentUser));
+    renderUserHeaderState();
   }
 
   try {
     await createQuestion(currentUser.name, currentUser.email, questionText);
     showToast('Your question has been sent to Dr. Abdul Rouf!');
     askQuestionForm.reset();
-    renderPublicQa();
+    await renderPublicQa();
+    await renderDoctorPortalData();
   } catch (err) {
-    showToast('Error submitting question.');
+    showToast('Error submitting question.', 'error');
   }
 });
 
