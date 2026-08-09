@@ -648,34 +648,90 @@ async function renderDoctorPortalData() {
     if (appointments.length === 0) {
       tbodyAppointments.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">No appointments booked yet.</td></tr>`;
     } else {
-      tbodyAppointments.innerHTML = appointments.map(apt => `
-        <tr>
-          <td data-label="Date & Slot"><strong>${apt.date}</strong><br><span style="color: var(--teal-accent); font-weight:600;">${apt.timeSlot}</span></td>
-          <td data-label="Patient Name"><strong>${apt.patientName}</strong><br><span style="font-size:0.8rem; color: var(--text-muted);">${apt.patientEmail}</span></td>
-          <td data-label="Contact Phone"><a href="tel:${apt.patientPhone}" style="color: var(--teal-accent); font-weight:700;"><i class="fa-solid fa-phone"></i> ${apt.patientPhone}</a></td>
-          <td data-label="Condition / Reason">${apt.issue || 'General consultation'}</td>
-          <td data-label="Fee"><strong>1,000 RS</strong></td>
-          <td data-label="Status"><span class="badge-status ${apt.status}">${apt.status}</span></td>
-          <td data-label="Actions">
-            ${apt.status === 'Pending' ? `
-              <button class="btn btn-primary action-btn-sm btn-status" data-id="${apt.id}" data-status="Approved">Approve</button>
-              <button class="btn btn-outline action-btn-sm btn-status" data-id="${apt.id}" data-status="Cancelled" style="color:red; border-color:red;">Cancel</button>
-            ` : apt.status === 'Approved' ? `
-              <button class="btn btn-accent action-btn-sm btn-status" data-id="${apt.id}" data-status="Completed">Complete</button>
-            ` : `
-              <span style="color: var(--text-muted); font-size:0.8rem;">Completed</span>
-            `}
-          </td>
-        </tr>
-      `).join('');
+      tbodyAppointments.innerHTML = appointments.map(apt => {
+        const rawPhone = (apt.patientPhone || '').replace(/[^0-9]/g, '');
+        const waPhone = rawPhone.startsWith('0') ? '92' + rawPhone.slice(1) : rawPhone;
+
+        return `
+          <tr>
+            <td data-label="Date & Slot">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <strong style="color: var(--primary-navy); font-size:0.9rem;"><i class="fa-regular fa-calendar-check" style="color: var(--teal-accent);"></i> ${apt.date || 'N/A'}</strong>
+                <span style="color: var(--teal-accent); font-weight:700; font-size:0.82rem;"><i class="fa-regular fa-clock"></i> ${apt.timeSlot || 'N/A'}</span>
+              </div>
+            </td>
+            <td data-label="Patient Name">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <strong style="color: var(--primary-navy); font-size:0.92rem;"><i class="fa-solid fa-user-circle" style="color: var(--teal-accent);"></i> ${apt.patientName || 'Patient'}</strong>
+                <span style="font-size:0.78rem; color: var(--text-muted);"><i class="fa-regular fa-envelope"></i> ${apt.patientEmail || 'No Email'}</span>
+              </div>
+            </td>
+            <td data-label="Contact Phone">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <a href="tel:${apt.patientPhone}" style="color: var(--teal-accent); font-weight:700; font-size:0.85rem; text-decoration:none;">
+                  <i class="fa-solid fa-phone"></i> ${apt.patientPhone || 'N/A'}
+                </a>
+                ${waPhone ? `
+                  <a href="https://wa.me/${waPhone}" target="_blank" style="color: #25D366; font-size:0.78rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+                    <i class="fa-brands fa-whatsapp"></i> Chat WhatsApp
+                  </a>
+                ` : ''}
+              </div>
+            </td>
+            <td data-label="Condition / Reason">
+              <div style="font-size:0.85rem; color: var(--text-dark); max-width: 220px; line-height:1.4;">
+                ${apt.issue ? `<strong>${apt.issue}</strong>` : '<span style="color: var(--text-muted); font-style:italic;">General Consultation</span>'}
+              </div>
+            </td>
+            <td data-label="Fee">
+              <strong style="color: var(--teal-accent); font-size:0.9rem;">1,000 RS</strong>
+            </td>
+            <td data-label="Status">
+              <span class="badge-status ${apt.status}">
+                ${apt.status === 'Approved' ? '<i class="fa-solid fa-circle-check"></i> Approved' :
+                  apt.status === 'Pending' ? '<i class="fa-solid fa-hourglass-half"></i> Pending' :
+                  apt.status === 'Completed' ? '<i class="fa-solid fa-check-double"></i> Completed' :
+                  '<i class="fa-solid fa-circle-xmark"></i> Cancelled'}
+              </span>
+            </td>
+            <td data-label="Actions">
+              <div class="doctor-action-btns">
+                ${apt.status === 'Pending' ? `
+                  <button class="btn btn-primary action-btn-sm btn-status" data-id="${apt.id}" data-status="Approved" title="Accept appointment">
+                    <i class="fa-solid fa-check"></i> Accept
+                  </button>
+                  <button class="btn btn-outline action-btn-sm btn-status" data-id="${apt.id}" data-status="Cancelled" style="color:#e74c3c; border-color:#e74c3c;" title="Reject appointment">
+                    <i class="fa-solid fa-xmark"></i> Reject
+                  </button>
+                ` : apt.status === 'Approved' ? `
+                  <button class="btn btn-accent action-btn-sm btn-status" data-id="${apt.id}" data-status="Completed" title="Mark completed">
+                    <i class="fa-solid fa-check-double"></i> Complete
+                  </button>
+                  <button class="btn btn-outline action-btn-sm btn-status" data-id="${apt.id}" data-status="Cancelled" style="color:#e74c3c; border-color:#e74c3c;" title="Cancel appointment">
+                    <i class="fa-solid fa-xmark"></i> Cancel
+                  </button>
+                ` : apt.status === 'Cancelled' ? `
+                  <button class="btn btn-outline action-btn-sm btn-status" data-id="${apt.id}" data-status="Pending" style="color:var(--teal-accent); border-color:var(--teal-accent);" title="Reopen appointment">
+                    <i class="fa-solid fa-rotate-left"></i> Re-open
+                  </button>
+                ` : `
+                  <span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Done</span>
+                `}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
   }
 
   // Status Action Click Handlers
   document.querySelectorAll('.btn-status').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const id = e.target.getAttribute('data-id');
-      const newStatus = e.target.getAttribute('data-status');
+      const targetBtn = e.target.closest('.btn-status');
+      if (!targetBtn) return;
+      const id = targetBtn.getAttribute('data-id');
+      const newStatus = targetBtn.getAttribute('data-status');
       await updateAppointmentStatus(id, newStatus);
       showToast(`Appointment status updated to ${newStatus}`);
       renderDoctorPortalData();

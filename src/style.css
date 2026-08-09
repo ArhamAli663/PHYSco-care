@@ -268,9 +268,9 @@ button {
 
 .hero-title {
   font-family: var(--font-heading);
-  font-size: 3.2rem;
+  font-size: 2.4rem;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
   color: #FFFFFF;
 }
 
@@ -281,9 +281,10 @@ button {
 }
 
 .hero-subtitle {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.8);
-  max-width: 540px;
+  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 520px;
+  line-height: 1.5;
 }
 
 .hero-stats-row {
@@ -443,36 +444,36 @@ button {
    SERVICES & CLINICAL SPECIALTIES
    ========================================================================== */
 .section {
-  padding: 90px 2rem;
+  padding: 60px 2rem;
 }
 
 .section-header {
   text-align: center;
-  max-width: 680px;
-  margin: 0 auto 3.5rem auto;
+  max-width: 650px;
+  margin: 0 auto 2.5rem auto;
 }
 
 .section-tag {
   color: var(--teal-accent);
   font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
+  font-size: 0.8rem;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   display: block;
 }
 
 .section-title {
   font-family: var(--font-heading);
-  font-size: 2.3rem;
+  font-size: 1.75rem;
   color: var(--primary-navy);
   font-weight: 800;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
 }
 
 .section-subtitle {
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
 .services-grid {
@@ -931,28 +932,28 @@ button {
 
 .data-table {
   width: 100%;
-  min-width: 700px;
   border-collapse: collapse;
   text-align: left;
 }
 
 .data-table th {
   background: var(--surface-muted);
-  padding: 0.9rem 1.1rem;
-  font-size: 0.82rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--primary-navy);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   border-bottom: 2px solid var(--border-light);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 1rem 1.1rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-light);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-dark);
+  vertical-align: middle;
 }
 
 .badge-status {
@@ -960,7 +961,10 @@ button {
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 700;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .badge-status.Approved {
@@ -983,11 +987,21 @@ button {
   color: #C5221F;
 }
 
+.doctor-action-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .action-btn-sm {
-  padding: 4px 10px;
+  padding: 5px 12px;
   font-size: 0.8rem;
   border-radius: var(--radius-sm);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Doctor Q&A Reply Box in Portal */
@@ -1573,13 +1587,89 @@ button {
   }
 
   .table-responsive {
-    border-radius: var(--radius-md);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
   }
 
   .data-table {
-    min-width: 650px;
+    min-width: 0 !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .data-table thead {
+    display: none !important;
+  }
+
+  .data-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+
+  .data-table tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--surface-card) !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-light) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: 1.1rem !important;
+    margin-bottom: 0 !important;
+  }
+
+  .data-table td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.55rem 0 !important;
+    border-bottom: 1px dashed var(--border-light) !important;
+    font-size: 0.88rem !important;
+    text-align: right !important;
+  }
+
+  .data-table td:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    padding-top: 0.8rem !important;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    text-align: left !important;
+    padding-right: 0.8rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .data-table td[data-label="Actions"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.4rem !important;
+  }
+
+  .data-table td[data-label="Actions"]::before {
+    text-align: left !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .doctor-action-btns {
+    width: 100% !important;
+    display: flex !important;
+    gap: 0.6rem !important;
+  }
+
+  .doctor-action-btns .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.85rem !important;
   }
 
   .portal-tabs {
