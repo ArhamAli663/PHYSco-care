@@ -112,6 +112,33 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPatientAppointmentStatus();
   setupMobileMenu();
 
+  // Doctor Portal Clear Buttons Setup
+  const btnClearApts = document.getElementById('btn-clear-apts');
+  if (btnClearApts) {
+    btnClearApts.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to clear all appointments and reset count to 0?')) {
+        await clearAllAppointments();
+        showToast('All appointments cleared. Reset count to 0.');
+        await renderDoctorPortalData();
+        await renderPatientAppointmentStatus();
+      }
+    });
+  }
+
+  const btnClearQa = document.getElementById('btn-clear-qa');
+  if (btnClearQa) {
+    btnClearQa.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to delete all patient questions?')) {
+        await clearAllQuestions();
+        showToast('All patient questions cleared.');
+        await renderDoctorPortalData();
+        await renderPublicQa();
+      }
+    });
+  }
+
   // Persistent Doctor Session Check: If logged in as Doctor, show Doctor Portal automatically
   if (currentUser && currentUser.role === 'doctor') {
     showDoctorPortalView();
