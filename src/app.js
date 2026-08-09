@@ -383,6 +383,10 @@ authForm?.addEventListener('submit', async (e) => {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
 
+  const origBtnHTML = btnAuthSubmit.innerHTML;
+  btnAuthSubmit.disabled = true;
+  btnAuthSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Please wait...`;
+
   try {
     if (isRegisterMode) {
       const name = document.getElementById('auth-name').value;
@@ -406,6 +410,9 @@ authForm?.addEventListener('submit', async (e) => {
     }
   } catch (err) {
     showToast(err.message || 'Authentication error.', 'error');
+  } finally {
+    btnAuthSubmit.disabled = false;
+    btnAuthSubmit.innerHTML = origBtnHTML;
   }
 });
 

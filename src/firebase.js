@@ -116,32 +116,40 @@ export function setCurrentSession(user) {
 
 // User Authentication (Firebase Auth + Fallback)
 export async function registerUser(email, password, name, phone) {
-  const isDoctor = (email.toLowerCase().trim() === 'roufag930@gmail.com');
+  const cleanEmail = email.toLowerCase().trim();
+  const isDoctor = (cleanEmail === 'roufag930@gmail.com');
   const role = isDoctor ? 'doctor' : 'patient';
-  const userData = { email: email.toLowerCase().trim(), name, phone, role };
-
-  if (isFirebaseConnected && auth) {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      userData.uid = userCredential.user.uid;
-      await addDoc(collection(db, 'users'), { ...userData, uid: userCredential.user.uid });
-    } catch (err) {
-      console.warn("Firebase register notice:", err.message);
-    }
-  }
-
-  if (!userData.uid) {
-    userData.uid = 'uid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-  }
+  const userData = {
+    uid: 'uid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+    email: cleanEmail,
+    name,
+    phone,
+    role
+  };
 
   const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_USERS) || '[]');
   const existing = users.find(u => u.email === userData.email);
-  if (!existing) {
-    users.push({ ...userData, password });
-    localStorage.setItem(LOCAL_STORAGE_USERS, JSON.stringify(users));
+  if (existing) {
+    throw new Error('An account with this email already exists. Please log in.');
   }
 
+  users.push({ ...userData, password });
+  localStorage.setItem(LOCAL_STORAGE_USERS, JSON.stringify(users));
   setCurrentSession(userData);
+
+  // Sync to Firebase Auth & Firestore asynchronously in background without blocking UI
+  if (isFirebaseConnected && auth) {
+    createUserWithEmailAndPassword(auth, email, password).then(async (userCredential) => {
+      userData.uid = userCredential.user.uid;
+      setCurrentSession(userData);
+      if (db) {
+        addDoc(collection(db, 'users'), { ...userData, uid: userCredential.user.uid }).catch(() => {});
+      }
+    }).catch((err) => {
+      console.warn("Background Firebase register notice:", err.message);
+    });
+  }
+
   return userData;
 }
 
@@ -149,55 +157,61 @@ export async function loginUser(email, password) {
   const cleanEmail = email.toLowerCase().trim();
   const isAdminCredentials = (cleanEmail === 'roufag930@gmail.com' && password === 'rouf@663');
 
-  let userData = null;
-
-  // Always try Firebase Auth first — this is essential for cross-device Firestore access
-  if (isFirebaseConnected && auth) {
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      const role = userCred.user.email.toLowerCase() === 'roufag930@gmail.com' ? 'doctor' : 'patient';
-      userData = {
-        uid: userCred.user.uid,
-        email: userCred.user.email,
-        name: userCred.user.displayName || email.split('@')[0],
-        role
-      };
-    } catch (firebaseErr) {
-      console.warn('Firebase Auth signin:', firebaseErr.code, firebaseErr.message);
-    }
-  }
-
-  // If Firebase Auth failed but these are the doctor's known credentials, build session manually
-  if (!userData && isAdminCredentials) {
-    userData = {
+  // 1. Instant check for Doctor admin credentials
+  if (isAdminCredentials) {
+    const doctorUser = {
       uid: 'doctor_rouf',
       email: 'roufag930@gmail.com',
       name: 'Dr. Abdul Rouf',
       role: 'doctor',
       phone: '03424437289'
     };
+    setCurrentSession(doctorUser);
+    if (isFirebaseConnected && auth) {
+      signInWithEmailAndPassword(auth, email, password).catch(() => {});
+    }
+    return doctorUser;
   }
 
-  // Last resort: check localStorage registered users
-  if (!userData) {
-    const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_USERS) || '[]');
-    const match = users.find(u => u.email === cleanEmail && u.password === password);
-    if (match) {
-      userData = {
-        uid: match.uid || cleanEmail,
-        email: match.email,
-        name: match.name,
-        phone: match.phone || '',
-        role: match.role || 'patient'
+  // 2. Instant check for local registered users
+  const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_USERS) || '[]');
+  const match = users.find(u => u.email === cleanEmail && u.password === password);
+  if (match) {
+    const userData = {
+      uid: match.uid || cleanEmail,
+      email: match.email,
+      name: match.name,
+      phone: match.phone || '',
+      role: match.role || 'patient'
+    };
+    setCurrentSession(userData);
+    if (isFirebaseConnected && auth) {
+      signInWithEmailAndPassword(auth, email, password).catch(() => {});
+    }
+    return userData;
+  }
+
+  // 3. Fallback to Firebase Auth for accounts created directly in Firebase Auth
+  if (isFirebaseConnected && auth) {
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const role = userCred.user.email.toLowerCase() === 'roufag930@gmail.com' ? 'doctor' : 'patient';
+      const userData = {
+        uid: userCred.user.uid,
+        email: userCred.user.email,
+        name: userCred.user.displayName || email.split('@')[0],
+        role
       };
-    } else {
-      throw new Error('Invalid email or password. Please check your credentials.');
+      setCurrentSession(userData);
+      return userData;
+    } catch (firebaseErr) {
+      console.warn('Firebase Auth signin error:', firebaseErr.code);
     }
   }
 
-  setCurrentSession(userData);
-  return userData;
+  throw new Error('Invalid email or password. Please check your credentials.');
 }
+
 
 // Real Google OAuth Authentication
 export async function loginWithGoogle() {

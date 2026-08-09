@@ -215,9 +215,9 @@ button {
    ========================================================================== */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: auto;
   background: var(--bg-gradient);
-  padding: 120px 2rem 60px 2rem;
+  padding: 95px 1.5rem 40px 1.5rem;
   display: flex;
   align-items: center;
   color: var(--text-light);
@@ -229,19 +229,19 @@ button {
   position: absolute;
   top: -20%;
   right: -10%;
-  width: 600px;
-  height: 600px;
+  width: 500px;
+  height: 500px;
   background: radial-gradient(circle, rgba(0, 168, 150, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
   border-radius: 50%;
   pointer-events: none;
 }
 
 .hero-grid {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4rem;
+  gap: 2.5rem;
   align-items: center;
   width: 100%;
 }
@@ -249,29 +249,30 @@ button {
 .hero-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .badge-clinic {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 6px 14px;
   background: rgba(0, 168, 150, 0.15);
   border: 1px solid rgba(0, 168, 150, 0.3);
   color: var(--teal-light);
   border-radius: var(--radius-full);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   width: fit-content;
 }
 
 .hero-title {
   font-family: var(--font-heading);
-  font-size: 2.4rem;
+  font-size: 1.85rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.25;
   color: #FFFFFF;
+  letter-spacing: -0.3px;
 }
 
 .hero-title span {
@@ -281,16 +282,16 @@ button {
 }
 
 .hero-subtitle {
-  font-size: 0.98rem;
+  font-size: 0.88rem;
   color: rgba(255, 255, 255, 0.85);
-  max-width: 520px;
+  max-width: 480px;
   line-height: 1.5;
 }
 
 .hero-stats-row {
   display: flex;
-  gap: 1.5rem;
-  margin-top: 1rem;
+  gap: 1rem;
+  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -298,27 +299,27 @@ button {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.2rem 1.5rem;
+  padding: 0.85rem 1.1rem;
   border-radius: var(--radius-md);
   flex: 1;
-  min-width: 150px;
+  min-width: 130px;
 }
 
 .stat-icon {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: var(--teal-light);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .stat-value {
   font-family: var(--font-heading);
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #fff;
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -328,39 +329,39 @@ button {
 
 .visual-frame {
   position: relative;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--shadow-lg), 0 0 40px rgba(0, 168, 150, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(0, 168, 150, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
 }
 
 .hero-img {
   width: 100%;
-  height: 480px;
+  height: 350px;
   object-fit: cover;
   display: block;
 }
 
 .doctor-floating-card {
   position: absolute;
-  bottom: -20px;
-  left: -20px;
+  bottom: -15px;
+  left: -15px;
   background: rgba(10, 37, 64, 0.95);
   backdrop-filter: blur(15px);
   border: 1px solid rgba(0, 168, 150, 0.4);
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.1rem;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   box-shadow: var(--shadow-lg);
 }
 
 .doc-avatar {
-  width: 64px;
-  height: 64px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  border: 2.5px solid var(--teal-accent);
+  border: 2px solid var(--teal-accent);
   object-fit: cover;
   object-position: top center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
@@ -369,12 +370,12 @@ button {
 .doc-info h4 {
   font-family: var(--font-heading);
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .doc-info p {
   color: var(--teal-light);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -382,115 +383,115 @@ button {
    QUICK INFORMATION STRIP & ADDRESS CARD
    ========================================================================== */
 .info-strip {
-  margin-top: -40px;
+  margin-top: -30px;
   position: relative;
   z-index: 10;
-  padding: 0 2rem;
+  padding: 0 1.5rem;
 }
 
 .strip-container {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   background: #FFFFFF;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 2rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 1.25rem 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
   border: 1px solid var(--border-light);
 }
 
 .strip-item {
   display: flex;
   align-items: flex-start;
-  gap: 1.2rem;
+  gap: 0.85rem;
 }
 
 .strip-icon-box {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   background: var(--surface-muted);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   color: var(--teal-accent);
   flex-shrink: 0;
 }
 
 .strip-text h4 {
   font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   color: var(--primary-navy);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
 }
 
 .strip-text p {
   color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 
 .strip-text .highlight-fee {
   color: var(--teal-accent);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 /* ==========================================================================
    SERVICES & CLINICAL SPECIALTIES
    ========================================================================== */
 .section {
-  padding: 60px 2rem;
+  padding: 40px 1.5rem;
 }
 
 .section-header {
   text-align: center;
-  max-width: 650px;
-  margin: 0 auto 2.5rem auto;
+  max-width: 600px;
+  margin: 0 auto 1.8rem auto;
 }
 
 .section-tag {
   color: var(--teal-accent);
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.3rem;
   display: block;
 }
 
 .section-title {
   font-family: var(--font-heading);
-  font-size: 1.75rem;
+  font-size: 1.45rem;
   color: var(--primary-navy);
   font-weight: 800;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.4rem;
 }
 
 .section-subtitle {
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: 0.86rem;
 }
 
 .services-grid {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
 }
 
 .service-card {
   background: var(--surface-card);
-  padding: 2.2rem;
-  border-radius: var(--radius-lg);
+  padding: 1.35rem;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
 }
@@ -501,14 +502,14 @@ button {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 4px;
+  height: 3px;
   background: linear-gradient(90deg, var(--teal-accent), var(--gold-accent));
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
 .service-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-accent);
 }
@@ -518,28 +519,29 @@ button {
 }
 
 .service-icon {
-  width: 60px;
-  height: 60px;
+  width: 44px;
+  height: 44px;
   background: rgba(0, 168, 150, 0.1);
   color: var(--teal-accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
 }
 
 .service-card h3 {
   font-family: var(--font-heading);
-  font-size: 1.3rem;
+  font-size: 1.05rem;
   color: var(--primary-navy);
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.5rem;
 }
 
 .service-card p {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 /* ==========================================================================
@@ -548,56 +550,57 @@ button {
 .booking-section {
   background: linear-gradient(135deg, #0A2540 0%, #06182B 100%);
   color: #fff;
-  border-radius: var(--radius-lg);
-  max-width: 1280px;
+  border-radius: var(--radius-md);
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 4rem 3rem;
+  padding: 2.2rem 2rem;
   box-shadow: var(--shadow-lg);
 }
 
 .booking-grid {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
-  gap: 3.5rem;
+  gap: 2.2rem;
   align-items: center;
 }
 
 .booking-info h2 {
   font-family: var(--font-heading);
-  font-size: 2.4rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .booking-info p {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 1.05rem;
-  margin-bottom: 2rem;
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
 }
 
 .booking-highlights {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 0.85rem;
 }
 
 .highlight-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 0.95rem;
+  gap: 10px;
+  font-size: 0.86rem;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .highlight-item i {
   color: var(--teal-light);
-  font-size: 1.2rem;
+  font-size: 1rem;
 }
 
 .booking-card {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.15);
+
   border-radius: var(--radius-lg);
   padding: 2.5rem;
 }
