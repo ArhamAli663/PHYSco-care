@@ -478,8 +478,10 @@ appointmentForm?.addEventListener('submit', async (e) => {
     showToast(`✅ Appointment booked for ${date} at ${timeSlot}! Fee: 1,000 RS. Awaiting doctor approval.`);
     appointmentForm.reset();
     setupMinDate();
-    await renderPatientAppointmentStatus();
-    await renderDoctorPortalData();
+    try {
+      renderPatientAppointmentStatus();
+      renderDoctorPortalData();
+    } catch (e) {}
   } catch (err) {
     showToast('Error saving appointment. Try again.', 'error');
   }
@@ -506,8 +508,10 @@ askQuestionForm?.addEventListener('submit', async (e) => {
     await createQuestion(currentUser.name, currentUser.email, questionText);
     showToast('Your question has been sent to Dr. Abdul Rouf!');
     askQuestionForm.reset();
-    await renderPublicQa();
-    await renderDoctorPortalData();
+    try {
+      renderPublicQa();
+      renderDoctorPortalData();
+    } catch (e) {}
   } catch (err) {
     showToast('Error submitting question.', 'error');
   }
