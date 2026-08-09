@@ -185,7 +185,7 @@ export async function loginUser(email, password) {
   }
 
   setCurrentSession(userData);
-  return userData;
+  return { uid: userData.uid || cleanEmail, ...userData };
 }
 
 // Real Google OAuth Authentication
@@ -420,6 +420,7 @@ function normalizeQuestion(item, docId) {
     firebaseId: docId || item.firebaseId || key,
     patientName: item.patientName || item.name || 'Patient',
     patientEmail: item.patientEmail || item.email || '',
+    patientUid: item.patientUid || '',
     question: item.question || item.text || '',
     answer: item.answer || null,
     answeredAt: item.answeredAt || null,
@@ -429,11 +430,12 @@ function normalizeQuestion(item, docId) {
 }
 
 // Q&A Management
-export async function createQuestion(patientName, patientEmail, questionText) {
+export async function createQuestion(patientName, patientEmail, questionText, patientUid) {
   const newQ = {
     id: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     patientName,
-    patientEmail,
+    patientEmail: patientEmail || '',
+    patientUid: patientUid || '',
     question: questionText,
     answer: null,
     answeredAt: null,

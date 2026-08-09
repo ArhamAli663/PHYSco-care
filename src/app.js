@@ -441,36 +441,31 @@ btnDoctorLogout?.addEventListener('click', handleLogout);
 appointmentForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const name = document.getElementById('patient-name').value;
-  const phone = document.getElementById('patient-phone').value;
-  const email = document.getElementById('patient-email').value;
-  const date = document.getElementById('appointment-date').value;
-  const timeSlot = document.getElementById('appointment-time').value;
-  const issue = document.getElementById('patient-issue').value;
-
-  if (!timeSlot) {
-    showToast('Please select a time slot between 4:00 PM and 10:00 PM.', 'error');
+  // Must be logged in to book
+  if (!currentUser || currentUser.role === 'doctor') {
+    showToast('Please log in or register first to book an appointment.', 'error');
+    openModal();
     return;
   }
 
-  // Ensure active patient session for guest bookers
-  if (!currentUser) {
-    currentUser = {
-      uid: 'pt_' + Date.now(),
-      name: name || 'Patient',
-      email: email || 'patient@example.com',
-      phone: phone || '',
-      role: 'patient'
-    };
-    localStorage.setItem('dr_rouf_user', JSON.stringify(currentUser));
-    renderUserHeaderState();
-  }
+  const name = document.getElementById('patient-name').value.trim();
+  const phone = document.getElementById('patient-phone').value.trim();
+  const email = document.getElementById('patient-email').value.trim();
+  const date = document.getElementById('appointment-date').value;
+  const timeSlot = document.getElementById('appointment-time').value;
+  const issue = document.getElementById('patient-issue').value.trim();
+
+  if (!name) { showToast('Please enter your name.', 'error'); return; }
+  if (!phone) { showToast('Please enter your phone number.', 'error'); return; }
+  if (!date) { showToast('Please select an appointment date.', 'error'); return; }
+  if (!timeSlot) { showToast('Please select a time slot between 4:00 PM and 10:00 PM.', 'error'); return; }
 
   try {
-    const apt = await createAppointment({
+    await createAppointment({
       patientName: name,
       patientPhone: phone,
-      patientEmail: email,
+      patientEmail: currentUser.email || email,
+      patientUid: currentUser.uid,
       date,
       timeSlot,
       issue
@@ -479,12 +474,9 @@ appointmentForm?.addEventListener('submit', async (e) => {
     showToast(`✅ Appointment booked for ${date} at ${timeSlot}! Fee: 1,000 RS. Awaiting doctor approval.`);
     appointmentForm.reset();
     setupMinDate();
-    try {
-      renderPatientAppointmentStatus();
-      renderDoctorPortalData();
-    } catch (e) {}
+    try { renderPatientAppointmentStatus(); renderDoctorPortalData(); } catch (e) {}
   } catch (err) {
-    showToast('Error saving appointment. Try again.', 'error');
+    showToast('Error saving appointment. Please try again.', 'error');
   }
 });
 
@@ -492,27 +484,21 @@ appointmentForm?.addEventListener('submit', async (e) => {
 askQuestionForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const questionText = document.getElementById('question-text').value;
-
-  if (!currentUser) {
-    currentUser = {
-      uid: 'pt_' + Date.now(),
-      name: 'Patient',
-      email: 'patient@example.com',
-      role: 'patient'
-    };
-    localStorage.setItem('dr_rouf_user', JSON.stringify(currentUser));
-    renderUserHeaderState();
+  // Must be logged in to ask questions
+  if (!currentUser || currentUser.role === 'doctor') {
+    showToast('Please log in or register first to ask a question.', 'error');
+    openModal();
+    return;
   }
 
+  const questionText = document.getElementById('question-text').value.trim();
+  if (!questionText) { showToast('Please enter your question.', 'error'); return; }
+
   try {
-    await createQuestion(currentUser.name, currentUser.email, questionText);
+    await createQuestion(currentUser.name, currentUser.email, questionText, currentUser.uid);
     showToast('Your question has been sent to Dr. Abdul Rouf!');
     askQuestionForm.reset();
-    try {
-      renderPublicQa();
-      renderDoctorPortalData();
-    } catch (e) {}
+    try { renderPublicQa(); renderDoctorPortalData(); } catch (e) {}
   } catch (err) {
     showToast('Error submitting question.', 'error');
   }
@@ -534,13 +520,16 @@ async function renderPatientAppointmentStatus() {
   const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
   const userName = (currentUser.name || '').toLowerCase().trim();
 
-  // Filter appointments belonging to this patient by email, phone, or name
+  // Filter appointments belonging to this patient by uid, email, phone, or name
+  const userUid = currentUser.uid || '';
   const myApts = allApts.filter(a => {
     const aptEmail = (a.patientEmail || '').toLowerCase().trim();
     const aptPhone = (a.patientPhone || '').replace(/[^0-9]/g, '');
     const aptName = (a.patientName || '').toLowerCase().trim();
+    const aptUid = a.patientUid || '';
 
     return (
+      (userUid && aptUid && aptUid === userUid) ||
       (userEmail && aptEmail && aptEmail === userEmail) ||
       (userPhone && aptPhone && aptPhone === userPhone) ||
       (userName && aptName && aptName === userName)
@@ -610,16 +599,43 @@ reviewForm?.addEventListener('submit', async (e) => {
   }
 });
 
-// Render Public Q&A Board
+// Render Public Q&A Board - only shows current user's own questions
 async function renderPublicQa() {
   if (!publicQaFeed) return;
-  const questions = await getQuestions();
 
-  if (questions.length === 0) {
+  // If not logged in, prompt to login
+  if (!currentUser || currentUser.role === 'doctor') {
+    publicQaFeed.innerHTML = `
+      <div style="text-align: center; padding: 1.5rem; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.9rem;">
+        <i class="fa-solid fa-lock" style="font-size: 1.8rem; color: var(--teal-accent); margin-bottom: 0.5rem; display: block;"></i>
+        Please <strong style="color:var(--teal-accent); cursor:pointer;" id="qa-login-prompt">log in</strong> to view your questions & answers.
+      </div>
+    `;
+    document.getElementById('qa-login-prompt')?.addEventListener('click', openModal);
+    return;
+  }
+
+  const allQuestions = await getQuestions();
+
+  // Filter: only show this patient's own questions
+  const userEmail = (currentUser.email || '').toLowerCase().trim();
+  const userUid = currentUser.uid || '';
+  const userName = (currentUser.name || '').toLowerCase().trim();
+
+  const myQuestions = allQuestions.filter(q => {
+    const qEmail = (q.patientEmail || '').toLowerCase().trim();
+    const qUid = q.patientUid || '';
+    const qName = (q.patientName || '').toLowerCase().trim();
+    return (userUid && qUid && qUid === userUid) ||
+           (userEmail && qEmail && qEmail === userEmail) ||
+           (userName && qName && qName === userName);
+  });
+
+  if (myQuestions.length === 0) {
     publicQaFeed.innerHTML = `
       <div style="text-align: center; padding: 1.5rem; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.9rem;">
         <i class="fa-solid fa-comments" style="font-size: 1.8rem; color: var(--teal-accent); margin-bottom: 0.5rem; display: block;"></i>
-        No health questions submitted yet. Be the first to ask Dr. Abdul Rouf!
+        You haven't asked any questions yet. Ask Dr. Abdul Rouf below!
       </div>
     `;
     return;
@@ -627,14 +643,14 @@ async function renderPublicQa() {
 
   publicQaFeed.innerHTML = `
     <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-family: var(--font-heading); color: var(--primary-navy); text-align: center; font-size: 1.25rem;">
-      <i class="fa-solid fa-comments" style="color: var(--teal-accent);"></i> Recent Questions & Answers
+      <i class="fa-solid fa-comments" style="color: var(--teal-accent);"></i> Your Questions & Answers
     </h3>
     <div class="qa-feed-list" style="display: flex; flex-direction: column; gap: 1rem;">
-      ${questions.map(q => `
+      ${myQuestions.map(q => `
         <div class="qa-card" style="background: #ffffff; padding: 1.2rem 1.4rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
           <div class="qa-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
             <span class="qa-author" style="font-weight: 700; color: var(--primary-navy); font-size: 0.92rem;">
-              <i class="fa-solid fa-user-circle" style="color: var(--teal-accent);"></i> ${q.patientName || 'Patient'}
+              <i class="fa-solid fa-user-circle" style="color: var(--teal-accent);"></i> ${q.patientName || 'You'}
             </span>
             <span class="qa-date" style="font-size: 0.78rem; color: var(--text-muted);">
               ${q.createdAt ? new Date(q.createdAt).toLocaleDateString() : ''}
