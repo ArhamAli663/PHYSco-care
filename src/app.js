@@ -9,6 +9,7 @@ import {
   getAppointments,
   updateAppointmentStatus,
   clearAllAppointments,
+  clearAllQuestions,
   createQuestion,
   getQuestions,
   answerQuestion,
@@ -740,15 +741,27 @@ async function renderDoctorPortalData() {
     }
   }
 
-  // Reset to 0 / Clear All Appointments Handler
+  // Reset / Clear All Appointments & Questions Handlers
   const btnClear = document.getElementById('btn-clear-apts');
   if (btnClear) {
     btnClear.onclick = async () => {
       if (confirm('Are you sure you want to clear all appointments and reset count to 0?')) {
         await clearAllAppointments();
-        showToast('All appointments cleared. Reset count to 0.');
-        renderDoctorPortalData();
-        renderPatientAppointmentStatus();
+        showToast('All appointments cleared. Count reset to 0.');
+        await renderDoctorPortalData();
+        await renderPatientAppointmentStatus();
+      }
+    };
+  }
+
+  const btnClearQa = document.getElementById('btn-clear-qa');
+  if (btnClearQa) {
+    btnClearQa.onclick = async () => {
+      if (confirm('Are you sure you want to delete all patient questions?')) {
+        await clearAllQuestions();
+        showToast('All patient questions cleared.');
+        await renderDoctorPortalData();
+        await renderPublicQa();
       }
     };
   }

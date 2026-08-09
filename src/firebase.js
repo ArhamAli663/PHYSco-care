@@ -370,20 +370,50 @@ export async function clearAllAppointments() {
   if (isFirebaseConnected && db) {
     try {
       const snapshot = await getDocs(collection(db, 'appointments'));
-      snapshot.forEach(async (docSnap) => {
-        try {
-          await deleteDoc(doc(db, 'appointments', docSnap.id));
-        } catch (e) {}
-      });
-    } catch (e) {}
+      const promises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'appointments', docSnap.id)));
+      await Promise.all(promises);
+    } catch (e) {
+      console.warn("Firestore clearAllAppointments notice:", e.message);
+    }
   }
   return true;
+}
+
+export async function clearAllQuestions() {
+  localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify([]));
+  if (isFirebaseConnected && db) {
+    try {
+      const snapshot = await getDocs(collection(db, 'questions'));
+      const promises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'questions', docSnap.id)));
+      await Promise.all(promises);
+    } catch (e) {
+      console.warn("Firestore clearAllQuestions notice:", e.message);
+    }
+  }
+  return true;
+}
+
+function normalizeQuestion(item, docId) {
+  if (!item) return null;
+  const key = item.id || docId || item.firebaseId || ('q_' + Math.random().toString(36).substring(2, 9));
+  const createdStr = parseTimestamp(item.createdAt);
+
+  return {
+    id: key,
+    firebaseId: docId || item.firebaseId || key,
+    patientName: item.patientName || item.name || 'Patient',
+    patientEmail: item.patientEmail || item.email || '',
+    question: item.question || item.text || '',
+    answer: item.answer || null,
+    answeredAt: item.answeredAt || null,
+    createdAt: createdStr
+  };
 }
 
 // Q&A Management
 export async function createQuestion(patientName, patientEmail, questionText) {
   const newQ = {
-    id: 'q_' + Date.now(),
+    id: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     patientName,
     patientEmail,
     question: questionText,
@@ -394,7 +424,8 @@ export async function createQuestion(patientName, patientEmail, questionText) {
 
   if (isFirebaseConnected && db) {
     try {
-      await addDoc(collection(db, 'questions'), newQ);
+      const docRef = await addDoc(collection(db, 'questions'), newQ);
+      newQ.firebaseId = docRef.id;
     } catch (e) {
       console.warn("Firestore createQuestion error:", e.message);
     }
@@ -417,13 +448,17 @@ export async function getQuestions() {
       } catch (err) {
         snapshot = await getDocs(collection(db, 'questions'));
       }
-      snapshot.forEach(doc => firebaseList.push({ firebaseId: doc.id, ...doc.data() }));
+      snapshot.forEach(docSnap => {
+        const norm = normalizeQuestion(docSnap.data(), docSnap.id);
+        if (norm) firebaseList.push(norm);
+      });
     } catch (e) {
       console.warn("Firestore questions fetch notice:", e.message);
     }
   }
 
-  const localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
+  const localRaw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
+  const localList = localRaw.map(item => normalizeQuestion(item, item?.id)).filter(Boolean);
 
   const mergedMap = new Map();
   localList.forEach(item => {
@@ -431,6 +466,7 @@ export async function getQuestions() {
       mergedMap.set(item.id, item);
     }
   });
+
   firebaseList.forEach(item => {
     if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
       const existing = mergedMap.get(item.id);
@@ -441,7 +477,7 @@ export async function getQuestions() {
   });
 
   const merged = Array.from(mergedMap.values());
-  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return merged;
 }
 
