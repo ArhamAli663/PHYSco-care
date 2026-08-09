@@ -16,6 +16,7 @@ import {
   getDocs, 
   doc, 
   updateDoc, 
+  deleteDoc,
   query, 
   orderBy, 
   serverTimestamp,
@@ -53,61 +54,16 @@ const LOCAL_STORAGE_QUESTIONS = 'dr_rouf_questions_v2';
 const LOCAL_STORAGE_REVIEWS = 'dr_rouf_reviews_v2';
 const LOCAL_STORAGE_SESSION = 'dr_rouf_session_v2';
 
-// Seed initial demo data for realistic user experience
+// Clean initial data setup - default to 0 demo appointments for clean live site
 function seedInitialData() {
-  if (!localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS)) {
-    const sampleAppointments = [
-      {
-        id: 'apt_101',
-        patientName: 'Muhammad Ahmad',
-        patientPhone: '03001234567',
-        patientEmail: 'ahmad@example.com',
-        date: '2026-07-28',
-        timeSlot: '05:00 PM',
-        issue: 'Severe lower back pain & sciatica stiffness',
-        fee: 1000,
-        status: 'Approved',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'apt_102',
-        patientName: 'Zainab Bibi',
-        patientPhone: '03219876543',
-        patientEmail: 'zainab@example.com',
-        date: '2026-07-28',
-        timeSlot: '07:30 PM',
-        issue: 'Post-knee surgery rehabilitation therapy',
-        fee: 1000,
-        status: 'Pending',
-        createdAt: new Date().toISOString()
-      }
-    ];
-    localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(sampleAppointments));
-  }
+  const existingApts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
+  // Filter out legacy dummy sample appointments (apt_101, apt_102)
+  const cleanedApts = existingApts.filter(a => a.id !== 'apt_101' && a.id !== 'apt_102');
+  localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(cleanedApts));
 
-  if (!localStorage.getItem(LOCAL_STORAGE_QUESTIONS)) {
-    const sampleQuestions = [
-      {
-        id: 'q_201',
-        patientName: 'Ali Raza',
-        patientEmail: 'ali@example.com',
-        question: 'Doctor, I have neck pain while working on laptop. What exercises should I do?',
-        answer: 'Hello Ali. Perform gentle chin tucks and shoulder blade squeezes every 45 mins. Keep monitor at eye level. If pain persists, visit AR Physio Care for a posture session.',
-        answeredAt: '2026-07-27 06:15 PM',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'q_202',
-        patientName: 'Saima Khan',
-        patientEmail: 'saima@example.com',
-        question: 'Is 1000 RS fee applicable for spinal manipulation session as well?',
-        answer: null,
-        answeredAt: null,
-        createdAt: new Date().toISOString()
-      }
-    ];
-    localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(sampleQuestions));
-  }
+  const existingQuestions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
+  const cleanedQuestions = existingQuestions.filter(q => q.id !== 'q_201' && q.id !== 'q_202');
+  localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(cleanedQuestions));
 
   if (!localStorage.getItem(LOCAL_STORAGE_REVIEWS)) {
     const sampleReviews = [
@@ -237,7 +193,6 @@ export async function loginWithGoogle() {
   if (isFirebaseConnected && auth) {
     try {
       const provider = new GoogleAuthProvider();
-      // Forces Google to show the account picker window listing all Google accounts on device
       provider.setCustomParameters({ prompt: 'select_account' });
       
       const result = await signInWithPopup(auth, provider);
@@ -251,7 +206,6 @@ export async function loginWithGoogle() {
         role: isDoctor ? 'doctor' : 'patient'
       };
 
-      // Store authenticated Google user in Firestore
       try {
         if (db) await addDoc(collection(db, 'users'), { ...userData, uid: user.uid });
       } catch (e) {}
@@ -260,9 +214,8 @@ export async function loginWithGoogle() {
       return userData;
     } catch (e) {
       console.error("Google Sign-In Firebase Error:", e.code, e.message);
-      // Re-throw original Firebase error code so UI can show specific messages
       const err = new Error(e.message || "Google Authentication failed.");
-      err.code = e.code; // preserve e.g. 'auth/unauthorized-domain'
+      err.code = e.code;
       throw err;
     }
   } else {
@@ -300,23 +253,47 @@ export async function createAppointment(appointmentData) {
 }
 
 export async function getAppointments() {
-  let list = [];
+  let firebaseList = [];
   if (isFirebaseConnected && db) {
     try {
-      const q = query(collection(db, 'appointments'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach(doc => list.push({ firebaseId: doc.id, ...doc.data() }));
-    } catch (e) {}
+      let snapshot;
+      try {
+        const q = query(collection(db, 'appointments'), orderBy('createdAt', 'desc'));
+        snapshot = await getDocs(q);
+      } catch (err) {
+        snapshot = await getDocs(collection(db, 'appointments'));
+      }
+      snapshot.forEach(doc => firebaseList.push({ firebaseId: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.warn("Firestore appointments fetch notice:", e.message);
+    }
   }
 
-  if (list.length === 0) {
-    list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
-  }
-  return list;
+  const localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
+
+  // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102)
+  const mergedMap = new Map();
+  localList.forEach(item => {
+    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
+      mergedMap.set(item.id, item);
+    }
+  });
+  firebaseList.forEach(item => {
+    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
+      // Prefer item with status updates
+      const existing = mergedMap.get(item.id);
+      if (!existing || item.updatedAt > (existing.updatedAt || '')) {
+        mergedMap.set(item.id, item);
+      }
+    }
+  });
+
+  const merged = Array.from(mergedMap.values());
+  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return merged;
 }
 
 export async function updateAppointmentStatus(id, newStatus) {
-  // Update local storage
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
   const item = list.find(a => a.id === id);
   if (item) {
@@ -325,7 +302,6 @@ export async function updateAppointmentStatus(id, newStatus) {
     localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(list));
   }
 
-  // Also update in Firebase Firestore
   if (isFirebaseConnected && db) {
     try {
       const q = query(collection(db, 'appointments'), where('id', '==', id));
@@ -343,6 +319,20 @@ export async function updateAppointmentStatus(id, newStatus) {
   return true;
 }
 
+export async function clearAllAppointments() {
+  localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify([]));
+  if (isFirebaseConnected && db) {
+    try {
+      const snapshot = await getDocs(collection(db, 'appointments'));
+      snapshot.forEach(async (docSnap) => {
+        try {
+          await deleteDoc(doc(db, 'appointments', docSnap.id));
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+  return true;
+}
 
 // Q&A Management
 export async function createQuestion(patientName, patientEmail, questionText) {
@@ -359,7 +349,9 @@ export async function createQuestion(patientName, patientEmail, questionText) {
   if (isFirebaseConnected && db) {
     try {
       await addDoc(collection(db, 'questions'), newQ);
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Firestore createQuestion error:", e.message);
+    }
   }
 
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
@@ -369,19 +361,42 @@ export async function createQuestion(patientName, patientEmail, questionText) {
 }
 
 export async function getQuestions() {
-  let list = [];
+  let firebaseList = [];
   if (isFirebaseConnected && db) {
     try {
-      const q = query(collection(db, 'questions'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(doc => list.push({ firebaseId: doc.id, ...doc.data() }));
-    } catch (e) {}
+      let snapshot;
+      try {
+        const q = query(collection(db, 'questions'), orderBy('createdAt', 'desc'));
+        snapshot = await getDocs(q);
+      } catch (err) {
+        snapshot = await getDocs(collection(db, 'questions'));
+      }
+      snapshot.forEach(doc => firebaseList.push({ firebaseId: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.warn("Firestore questions fetch notice:", e.message);
+    }
   }
 
-  if (list.length === 0) {
-    list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
-  }
-  return list;
+  const localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
+
+  const mergedMap = new Map();
+  localList.forEach(item => {
+    if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
+      mergedMap.set(item.id, item);
+    }
+  });
+  firebaseList.forEach(item => {
+    if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
+      const existing = mergedMap.get(item.id);
+      if (!existing || item.answer) {
+        mergedMap.set(item.id, item);
+      }
+    }
+  });
+
+  const merged = Array.from(mergedMap.values());
+  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return merged;
 }
 
 export async function answerQuestion(id, answerText) {
@@ -391,6 +406,21 @@ export async function answerQuestion(id, answerText) {
     item.answer = answerText;
     item.answeredAt = new Date().toLocaleString();
     localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(list));
+  }
+
+  if (isFirebaseConnected && db) {
+    try {
+      const q = query(collection(db, 'questions'), where('id', '==', id));
+      const snapshot = await getDocs(q);
+      snapshot.forEach(async (docSnap) => {
+        await updateDoc(doc(db, 'questions', docSnap.id), {
+          answer: answerText,
+          answeredAt: new Date().toLocaleString()
+        });
+      });
+    } catch (e) {
+      console.warn("Firestore question answer update error:", e.message);
+    }
   }
   return true;
 }
@@ -418,17 +448,27 @@ export async function createReview(patientName, rating, reviewText) {
 }
 
 export async function getReviews() {
-  let list = [];
+  let firebaseList = [];
   if (isFirebaseConnected && db) {
     try {
-      const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(doc => list.push({ firebaseId: doc.id, ...doc.data() }));
+      let snapshot;
+      try {
+        const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
+        snapshot = await getDocs(q);
+      } catch (err) {
+        snapshot = await getDocs(collection(db, 'reviews'));
+      }
+      snapshot.forEach(doc => firebaseList.push({ firebaseId: doc.id, ...doc.data() }));
     } catch (e) {}
   }
 
-  if (list.length === 0) {
-    list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_REVIEWS) || '[]');
-  }
-  return list;
+  const localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_REVIEWS) || '[]');
+
+  const mergedMap = new Map();
+  localList.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+  firebaseList.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+
+  const merged = Array.from(mergedMap.values());
+  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return merged;
 }

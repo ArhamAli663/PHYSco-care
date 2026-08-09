@@ -8,6 +8,7 @@ import {
   createAppointment,
   getAppointments,
   updateAppointmentStatus,
+  clearAllAppointments,
   createQuestion,
   getQuestions,
   answerQuestion,
@@ -479,10 +480,23 @@ async function renderPatientAppointmentStatus() {
   }
 
   const allApts = await getAppointments();
-  // Filter appointments belonging to this patient by email
-  const myApts = allApts.filter(a =>
-    a.patientEmail && a.patientEmail.toLowerCase() === currentUser.email.toLowerCase()
-  );
+  
+  const userEmail = (currentUser.email || '').toLowerCase().trim();
+  const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
+  const userName = (currentUser.name || '').toLowerCase().trim();
+
+  // Filter appointments belonging to this patient by email, phone, or name
+  const myApts = allApts.filter(a => {
+    const aptEmail = (a.patientEmail || '').toLowerCase().trim();
+    const aptPhone = (a.patientPhone || '').replace(/[^0-9]/g, '');
+    const aptName = (a.patientName || '').toLowerCase().trim();
+
+    return (
+      (userEmail && aptEmail && aptEmail === userEmail) ||
+      (userPhone && aptPhone && aptPhone === userPhone) ||
+      (userName && aptName && aptName === userName)
+    );
+  });
 
   if (myApts.length === 0) {
     bar.style.display = 'none';
@@ -507,18 +521,18 @@ async function renderPatientAppointmentStatus() {
 
   bar.style.display = 'block';
   bar.innerHTML = `
-    <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; padding: 0.2rem 0;">
       <div style="background:rgba(255,255,255,0.15); border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
         <i class="fa-solid ${statusIcon}" style="color:${statusColor}; font-size:1.4rem;"></i>
       </div>
       <div style="flex:1; min-width:0;">
         <div style="color:#fff; font-weight:700; font-size:0.95rem; margin-bottom:0.2rem;">
-          Appointment: ${latest.date} at ${latest.timeSlot}
+          Appointment: ${latest.date || ''} at ${latest.timeSlot || ''}
         </div>
         <div style="color:rgba(255,255,255,0.9); font-size:0.85rem;">${statusMsg}</div>
       </div>
       <span style="background:${statusColor}; color:#000; font-weight:800; font-size:0.8rem; padding:0.35rem 0.9rem; border-radius:999px; white-space:nowrap;">
-        ${latest.status.toUpperCase()}
+        ${latest.status ? latest.status.toUpperCase() : 'PENDING'}
       </span>
     </div>
   `;
@@ -725,6 +739,19 @@ async function renderDoctorPortalData() {
     }
   }
 
+  // Reset to 0 / Clear All Appointments Handler
+  const btnClear = document.getElementById('btn-clear-apts');
+  if (btnClear) {
+    btnClear.onclick = async () => {
+      if (confirm('Are you sure you want to clear all appointments and reset count to 0?')) {
+        await clearAllAppointments();
+        showToast('All appointments cleared. Reset count to 0.');
+        renderDoctorPortalData();
+        renderPatientAppointmentStatus();
+      }
+    };
+  }
+
   // Status Action Click Handlers
   document.querySelectorAll('.btn-status').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -735,6 +762,7 @@ async function renderDoctorPortalData() {
       await updateAppointmentStatus(id, newStatus);
       showToast(`Appointment status updated to ${newStatus}`);
       renderDoctorPortalData();
+      renderPatientAppointmentStatus();
     });
   });
 
