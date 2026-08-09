@@ -14,7 +14,9 @@ import {
   getQuestions,
   answerQuestion,
   createReview,
-  getReviews
+  getReviews,
+  subscribeAppointments,
+  subscribeQuestions
 } from './firebase.js';
 
 let currentUser = getCurrentSession();
@@ -157,14 +159,20 @@ document.addEventListener('DOMContentLoaded', () => {
     showDoctorPortalView();
   }
 
-  // Auto-refresh live data every 5 seconds (updates Doctor Portal and Patient Status live)
-  setInterval(async () => {
+  // Live Realtime Firestore Listeners across all devices & browsers
+  subscribeAppointments((liveApts) => {
     if (currentUser && currentUser.role === 'doctor') {
-      await renderDoctorPortalData();
-    } else {
-      await renderPatientAppointmentStatus();
+      renderDoctorPortalData(liveApts, null);
     }
-  }, 5000);
+    renderPatientAppointmentStatus(liveApts);
+  });
+
+  subscribeQuestions((liveQuestions) => {
+    if (currentUser && currentUser.role === 'doctor') {
+      renderDoctorPortalData(null, liveQuestions);
+    }
+    renderPublicQa(liveQuestions);
+  });
 });
 
 // Mobile Navigation Toggle
@@ -544,7 +552,7 @@ askQuestionForm?.addEventListener('submit', async (e) => {
 });
 
 // Show Patient Appointment Status Banner
-async function renderPatientAppointmentStatus() {
+async function renderPatientAppointmentStatus(preLoadedApts = null) {
   const bar = document.getElementById('patient-apt-status-bar');
   if (!bar) return;
 
@@ -553,7 +561,10 @@ async function renderPatientAppointmentStatus() {
     return;
   }
 
-  const allApts = await getAppointments();
+  let allApts = preLoadedApts;
+  if (!allApts) {
+    try { allApts = await getAppointments(); } catch(e) { allApts = []; }
+  }
   
   const userEmail = (currentUser.email || '').toLowerCase().trim();
   const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
@@ -639,7 +650,7 @@ reviewForm?.addEventListener('submit', async (e) => {
 });
 
 // Render Public Q&A Board - only shows current user's own questions
-async function renderPublicQa() {
+async function renderPublicQa(preLoadedQuestions = null) {
   if (!publicQaFeed) return;
 
   // If not logged in, prompt to login
@@ -654,7 +665,10 @@ async function renderPublicQa() {
     return;
   }
 
-  const allQuestions = await getQuestions();
+  let allQuestions = preLoadedQuestions;
+  if (!allQuestions) {
+    try { allQuestions = await getQuestions(); } catch(e) { allQuestions = []; }
+  }
 
   // Filter: only show this patient's own questions
   const userEmail = (currentUser.email || '').toLowerCase().trim();
@@ -752,17 +766,21 @@ async function renderPatientReviews() {
 }
 
 // Doctor Portal Data Renderer
-async function renderDoctorPortalData() {
-  let appointments = [];
-  let questions = [];
+async function renderDoctorPortalData(preLoadedApts = null, preLoadedQuestions = null) {
+  let appointments = preLoadedApts;
+  let questions = preLoadedQuestions;
 
-  try {
-    appointments = await getAppointments();
-  } catch (e) { console.warn('getAppointments error:', e); }
+  if (!appointments) {
+    try {
+      appointments = await getAppointments();
+    } catch (e) { appointments = []; }
+  }
 
-  try {
-    questions = await getQuestions();
-  } catch (e) { console.warn('getQuestions error:', e); }
+  if (!questions) {
+    try {
+      questions = await getQuestions();
+    } catch (e) { questions = []; }
+  }
 
   // Metrics
   const elTotal = document.getElementById('metric-total-apts');

@@ -20,7 +20,8 @@ import {
   query, 
   orderBy, 
   serverTimestamp,
-  where
+  where,
+  onSnapshot
 } from 'firebase/firestore';
 
 // Default Firebase Configuration
@@ -308,12 +309,10 @@ export async function getAppointments() {
         if (norm && !norm.deleted) firebaseList.push(norm);
       });
 
-      if (firebaseList.length > 0) {
-        // Cache to localStorage for offline use
-        localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(firebaseList));
-        firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return firebaseList;
-      }
+      // Cache to localStorage for offline use
+      localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(firebaseList));
+      firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return firebaseList;
     } catch (e) {
       console.warn('Firestore appointments fetch notice:', e.message);
     }
@@ -474,11 +473,9 @@ export async function getQuestions() {
         if (norm && !norm.deleted) firebaseList.push(norm);
       });
 
-      if (firebaseList.length > 0) {
-        localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(firebaseList));
-        firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return firebaseList;
-      }
+      localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(firebaseList));
+      firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return firebaseList;
     } catch (e) {
       console.warn('Firestore questions fetch notice:', e.message);
     }
@@ -573,3 +570,49 @@ export async function getReviews() {
   merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   return merged;
 }
+
+// REALTIME FIRESTORE LISTENERS FOR CROSS-DEVICE LIVE SYNC
+export function subscribeAppointments(callback) {
+  if (isFirebaseConnected && db) {
+    try {
+      return onSnapshot(collection(db, 'appointments'), (snapshot) => {
+        const list = [];
+        snapshot.forEach(docSnap => {
+          const norm = normalizeAppointment({ ...docSnap.data(), _docId: docSnap.id }, docSnap.id);
+          if (norm && !norm.deleted) list.push(norm);
+        });
+        localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(list));
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(list);
+      }, (err) => {
+        console.warn("Realtime appointments listener error:", err.message);
+      });
+    } catch (e) {
+      console.warn("subscribeAppointments error:", e);
+    }
+  }
+  return null;
+}
+
+export function subscribeQuestions(callback) {
+  if (isFirebaseConnected && db) {
+    try {
+      return onSnapshot(collection(db, 'questions'), (snapshot) => {
+        const list = [];
+        snapshot.forEach(docSnap => {
+          const norm = normalizeQuestion({ ...docSnap.data(), _docId: docSnap.id }, docSnap.id);
+          if (norm && !norm.deleted) list.push(norm);
+        });
+        localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(list));
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(list);
+      }, (err) => {
+        console.warn("Realtime questions listener error:", err.message);
+      });
+    } catch (e) {
+      console.warn("subscribeQuestions error:", e);
+    }
+  }
+  return null;
+}
+
