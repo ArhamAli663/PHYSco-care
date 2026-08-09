@@ -287,7 +287,7 @@ function normalizeAppointment(item, docId) {
 }
 
 export async function getAppointments() {
-  let firebaseList = [];
+  // FIRESTORE FIRST — the real cross-device source of truth
   if (isFirebaseConnected && db) {
     try {
       let snapshot;
@@ -297,68 +297,60 @@ export async function getAppointments() {
       } catch (err) {
         snapshot = await getDocs(collection(db, 'appointments'));
       }
+      const firebaseList = [];
       snapshot.forEach(docSnap => {
-        const norm = normalizeAppointment(docSnap.data(), docSnap.id);
+        const norm = normalizeAppointment({ ...docSnap.data(), _docId: docSnap.id }, docSnap.id);
         if (norm && !norm.deleted) firebaseList.push(norm);
       });
+
+      if (firebaseList.length > 0) {
+        // Cache to localStorage for offline use
+        localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(firebaseList));
+        firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return firebaseList;
+      }
     } catch (e) {
-      console.warn("Firestore appointments fetch notice:", e.message);
+      console.warn('Firestore appointments fetch notice:', e.message);
     }
   }
 
+  // OFFLINE FALLBACK — use localStorage cache
   const localRaw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
-  const localList = localRaw.map(item => normalizeAppointment(item, item?.id)).filter(item => item && !item.deleted);
-
-  // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102)
-  const mergedMap = new Map();
-  localList.forEach(item => {
-    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      mergedMap.set(item.id, item);
-    }
-  });
-
-  firebaseList.forEach(item => {
-    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
-      const existing = mergedMap.get(item.id);
-      if (!existing || item.updatedAt >= existing.updatedAt) {
-        mergedMap.set(item.id, item);
-      }
-    }
-  });
-
-  const merged = Array.from(mergedMap.values());
-  merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  return merged;
+  const localList = localRaw
+    .map(item => normalizeAppointment(item, item?.id))
+    .filter(item => item && !item.deleted && item.id !== 'apt_101' && item.id !== 'apt_102');
+  localList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return localList;
 }
 
 export async function updateAppointmentStatus(id, newStatus) {
+  const updatedAt = new Date().toISOString();
+
+  // Update localStorage cache
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
-  const item = list.find(a => a.id === id || a.firebaseId === id);
+  const item = list.find(a => a.id === id || a.firebaseId === id || a._docId === id);
   if (item) {
     item.status = newStatus;
-    item.updatedAt = new Date().toISOString();
+    item.updatedAt = updatedAt;
     localStorage.setItem(LOCAL_STORAGE_APPOINTMENTS, JSON.stringify(list));
   }
 
+  // Update Firestore — try doc ID directly first, then query by id field
   if (isFirebaseConnected && db) {
     try {
+      await updateDoc(doc(db, 'appointments', id), { status: newStatus, updatedAt });
+    } catch (directErr) {
       try {
-        await updateDoc(doc(db, 'appointments', id), {
-          status: newStatus,
-          updatedAt: new Date().toISOString()
-        });
-      } catch (err) {
+        // Try by inline id field
         const q = query(collection(db, 'appointments'), where('id', '==', id));
         const snapshot = await getDocs(q);
-        snapshot.forEach(async (docSnap) => {
-          await updateDoc(doc(db, 'appointments', docSnap.id), {
-            status: newStatus,
-            updatedAt: new Date().toISOString()
-          });
-        });
+        const writes = snapshot.docs.map(docSnap =>
+          updateDoc(doc(db, 'appointments', docSnap.id), { status: newStatus, updatedAt })
+        );
+        await Promise.all(writes);
+      } catch (e) {
+        console.warn('Firebase status update error:', e.message);
       }
-    } catch (e) {
-      console.warn('Firebase status update error:', e.message);
     }
   }
   return true;
@@ -418,6 +410,7 @@ function normalizeQuestion(item, docId) {
   return {
     id: key,
     firebaseId: docId || item.firebaseId || key,
+    _docId: item._docId || docId || '',
     patientName: item.patientName || item.name || 'Patient',
     patientEmail: item.patientEmail || item.email || '',
     patientUid: item.patientUid || '',
@@ -458,7 +451,7 @@ export async function createQuestion(patientName, patientEmail, questionText, pa
 }
 
 export async function getQuestions() {
-  let firebaseList = [];
+  // FIRESTORE FIRST — the real cross-device source of truth
   if (isFirebaseConnected && db) {
     try {
       let snapshot;
@@ -468,60 +461,61 @@ export async function getQuestions() {
       } catch (err) {
         snapshot = await getDocs(collection(db, 'questions'));
       }
+      const firebaseList = [];
       snapshot.forEach(docSnap => {
-        const norm = normalizeQuestion(docSnap.data(), docSnap.id);
+        const data = docSnap.data();
+        // Store the Firestore document ID so we can update it directly
+        const norm = normalizeQuestion({ ...data, _docId: docSnap.id }, docSnap.id);
         if (norm && !norm.deleted) firebaseList.push(norm);
       });
+
+      if (firebaseList.length > 0) {
+        localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(firebaseList));
+        firebaseList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return firebaseList;
+      }
     } catch (e) {
-      console.warn("Firestore questions fetch notice:", e.message);
+      console.warn('Firestore questions fetch notice:', e.message);
     }
   }
 
+  // OFFLINE FALLBACK
   const localRaw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
-  const localList = localRaw.map(item => normalizeQuestion(item, item?.id)).filter(item => item && !item.deleted);
-
-  const mergedMap = new Map();
-  localList.forEach(item => {
-    if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
-      mergedMap.set(item.id, item);
-    }
-  });
-
-  firebaseList.forEach(item => {
-    if (item && item.id && item.id !== 'q_201' && item.id !== 'q_202') {
-      const existing = mergedMap.get(item.id);
-      if (!existing || item.answer) {
-        mergedMap.set(item.id, item);
-      }
-    }
-  });
-
-  const merged = Array.from(mergedMap.values());
-  merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  return merged;
+  const localList = localRaw
+    .map(item => normalizeQuestion(item, item?.id))
+    .filter(item => item && !item.deleted && item.id !== 'q_201' && item.id !== 'q_202');
+  localList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return localList;
 }
 
 export async function answerQuestion(id, answerText) {
+  const answeredAt = new Date().toLocaleString();
+
+  // Update localStorage cache
   const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_QUESTIONS) || '[]');
-  const item = list.find(q => q.id === id);
+  const item = list.find(q => q.id === id || q.firebaseId === id || q._docId === id);
   if (item) {
     item.answer = answerText;
-    item.answeredAt = new Date().toLocaleString();
+    item.answeredAt = answeredAt;
     localStorage.setItem(LOCAL_STORAGE_QUESTIONS, JSON.stringify(list));
   }
 
+  // Update Firestore — try doc ID directly first (most reliable cross-device)
   if (isFirebaseConnected && db) {
     try {
-      const q = query(collection(db, 'questions'), where('id', '==', id));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(async (docSnap) => {
-        await updateDoc(doc(db, 'questions', docSnap.id), {
-          answer: answerText,
-          answeredAt: new Date().toLocaleString()
-        });
-      });
-    } catch (e) {
-      console.warn("Firestore question answer update error:", e.message);
+      await updateDoc(doc(db, 'questions', id), { answer: answerText, answeredAt });
+    } catch (directErr) {
+      try {
+        // Fallback: query by inline id field
+        const q = query(collection(db, 'questions'), where('id', '==', id));
+        const snapshot = await getDocs(q);
+        const writes = snapshot.docs.map(docSnap =>
+          updateDoc(doc(db, 'questions', docSnap.id), { answer: answerText, answeredAt })
+        );
+        await Promise.all(writes);
+      } catch (e) {
+        console.warn('Firestore question answer update error:', e.message);
+      }
     }
   }
   return true;

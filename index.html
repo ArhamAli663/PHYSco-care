@@ -278,7 +278,7 @@
         </div>
 
         <div class="service-card">
-          <div class="service-icon"><i class="fa-solid fa-person-walking-rebound"></i></div>
+          <div class="service-icon"><i class="fa-solid fa-scissors"></i></div>
           <h3>Post-Surgical Rehab</h3>
           <p>ACL, joint replacements and orthopedic surgery recovery.</p>
         </div>
@@ -744,7 +744,15 @@
 
           <div class="form-group">
             <label class="form-label" style="color: var(--text-dark)">Password</label>
-            <input type="password" id="auth-password" class="form-control light-input" placeholder="••••••••" required>
+            <div style="position: relative;">
+              <input type="password" id="auth-password" class="form-control light-input" placeholder="••••••••" required
+                style="padding-right: 2.8rem;">
+              <button type="button" id="toggle-password-eye"
+                style="position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:1rem; padding:0; line-height:1;"
+                title="Show/Hide Password" tabindex="-1">
+                <i class="fa-solid fa-eye" id="eye-icon"></i>
+              </button>
+            </div>
           </div>
 
           <button type="submit" class="btn btn-primary" id="btn-auth-submit"

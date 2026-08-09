@@ -113,6 +113,18 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPatientAppointmentStatus();
   setupMobileMenu();
 
+  // Password Eye Toggle
+  const toggleEye = document.getElementById('toggle-password-eye');
+  const pwdInput = document.getElementById('auth-password');
+  const eyeIcon = document.getElementById('eye-icon');
+  if (toggleEye && pwdInput && eyeIcon) {
+    toggleEye.addEventListener('click', () => {
+      const isPassword = pwdInput.type === 'password';
+      pwdInput.type = isPassword ? 'text' : 'password';
+      eyeIcon.className = isPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    });
+  }
+
   // Doctor Portal Clear Buttons Setup
   const btnClearApts = document.getElementById('btn-clear-apts');
   if (btnClearApts) {
@@ -367,7 +379,7 @@ authForm?.addEventListener('submit', async (e) => {
       showToast('Registration successful! Welcome to AR Physio Care.');
     } else {
       currentUser = await loginUser(email, password);
-      showToast(`Welcome back, ${currentUser.name}`);
+      showToast(`✅ Welcome back, ${currentUser.name}!`);
     }
 
     closeModal();
@@ -375,6 +387,10 @@ authForm?.addEventListener('submit', async (e) => {
 
     if (currentUser.role === 'doctor') {
       showDoctorPortalView();
+    } else {
+      // Refresh patient data from Firestore on login
+      renderPublicQa();
+      renderPatientAppointmentStatus();
     }
   } catch (err) {
     showToast(err.message || 'Authentication error.', 'error');
@@ -396,6 +412,10 @@ btnGoogleLogin?.addEventListener('click', async () => {
 
     if (currentUser.role === 'doctor') {
       showDoctorPortalView();
+    } else {
+      // Refresh patient data from Firestore on login
+      renderPublicQa();
+      renderPatientAppointmentStatus();
     }
   } catch (err) {
     console.error('Google Auth error:', err);
@@ -430,6 +450,25 @@ btnGoogleLogin?.addEventListener('click', async () => {
 async function handleLogout() {
   await logoutUser();
   currentUser = null;
+
+  // Clear booking form on logout
+  const nameInp = document.getElementById('patient-name');
+  const emailInp = document.getElementById('patient-email');
+  const phoneInp = document.getElementById('patient-phone');
+  const dateInp = document.getElementById('appointment-date');
+  const issueInp = document.getElementById('patient-issue');
+  const timeInp = document.getElementById('appointment-time');
+  if (nameInp) nameInp.value = '';
+  if (emailInp) emailInp.value = '';
+  if (phoneInp) phoneInp.value = '';
+  if (dateInp) dateInp.value = '';
+  if (issueInp) issueInp.value = '';
+  if (timeInp) timeInp.value = '';
+
+  // Clear patient status bar
+  const bar = document.getElementById('patient-apt-status-bar');
+  if (bar) bar.style.display = 'none';
+
   renderUserHeaderState();
   showPublicView();
   showToast('Logged out successfully.');
@@ -883,7 +922,7 @@ async function renderDoctorPortalData() {
               <p style="color: var(--text-dark); font-size: 0.92rem; line-height: 1.5;">${q.answer}</p>
             </div>
           ` : `
-            <form class="form-answer-qa" data-id="${q.id}" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
+            <form class="form-answer-qa" data-id="${q.id}" data-docid="${q._docId || q.firebaseId || q.id}" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
               <input type="text" class="doctor-reply-input" placeholder="Type doctor's response to patient here..." required style="flex:1; min-width:220px; margin:0; padding:0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
               <button type="submit" class="btn btn-primary action-btn-sm" style="padding:0.75rem 1.2rem; font-size:0.88rem; justify-content:center;">
                 <i class="fa-solid fa-reply"></i> Post Answer
@@ -899,8 +938,11 @@ async function renderDoctorPortalData() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = form.getAttribute('data-id');
-      const answerText = form.querySelector('input').value;
-      await answerQuestion(id, answerText);
+      const docId = form.getAttribute('data-docid');
+      const answerText = form.querySelector('input').value.trim();
+      if (!answerText) return;
+      // Use Firestore doc ID (_docId) for direct, reliable cross-device update
+      await answerQuestion(docId || id, answerText);
       showToast('Answer posted to patient successfully!');
       renderDoctorPortalData();
       renderPublicQa();
