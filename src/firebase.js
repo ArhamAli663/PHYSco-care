@@ -255,6 +255,36 @@ export async function createAppointment(appointmentData) {
   return newApt;
 }
 
+function parseTimestamp(ts) {
+  if (!ts) return new Date().toISOString();
+  if (typeof ts === 'string') return ts;
+  if (ts.toDate && typeof ts.toDate === 'function') return ts.toDate().toISOString();
+  if (ts.seconds) return new Date(ts.seconds * 1000).toISOString();
+  return new Date().toISOString();
+}
+
+function normalizeAppointment(item, docId) {
+  if (!item) return null;
+  const key = item.id || docId || item.firebaseId || ('apt_' + Math.random().toString(36).substring(2, 9));
+  const createdStr = parseTimestamp(item.createdAt);
+  const updatedStr = item.updatedAt ? parseTimestamp(item.updatedAt) : createdStr;
+
+  return {
+    id: key,
+    firebaseId: docId || item.firebaseId || key,
+    patientName: item.patientName || item.name || 'Patient',
+    patientEmail: item.patientEmail || item.email || 'No Email',
+    patientPhone: item.patientPhone || item.phone || 'N/A',
+    date: item.date || (createdStr ? createdStr.split('T')[0] : 'N/A'),
+    timeSlot: item.timeSlot || item.time || 'N/A',
+    issue: item.issue || item.condition || item.reason || '',
+    fee: item.fee || 1000,
+    status: item.status || 'Pending',
+    createdAt: createdStr,
+    updatedAt: updatedStr
+  };
+}
+
 export async function getAppointments() {
   let firebaseList = [];
   if (isFirebaseConnected && db) {
@@ -267,44 +297,36 @@ export async function getAppointments() {
         snapshot = await getDocs(collection(db, 'appointments'));
       }
       snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const aptId = data.id || docSnap.id;
-        firebaseList.push({ ...data, id: aptId, firebaseId: docSnap.id });
+        const norm = normalizeAppointment(docSnap.data(), docSnap.id);
+        if (norm) firebaseList.push(norm);
       });
     } catch (e) {
       console.warn("Firestore appointments fetch notice:", e.message);
     }
   }
 
-  const localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
+  const localRaw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_APPOINTMENTS) || '[]');
+  const localList = localRaw.map(item => normalizeAppointment(item, item?.id)).filter(Boolean);
 
   // Merge Firestore & local storage items, filtering out old dummy items (apt_101, apt_102)
   const mergedMap = new Map();
   localList.forEach(item => {
-    if (item) {
-      const key = item.id || item.firebaseId;
-      if (key && key !== 'apt_101' && key !== 'apt_102') {
-        item.id = key;
-        mergedMap.set(key, item);
-      }
+    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
+      mergedMap.set(item.id, item);
     }
   });
 
   firebaseList.forEach(item => {
-    if (item) {
-      const key = item.id || item.firebaseId;
-      if (key && key !== 'apt_101' && key !== 'apt_102') {
-        item.id = key;
-        const existing = mergedMap.get(key);
-        if (!existing || (item.updatedAt || '') >= (existing.updatedAt || '')) {
-          mergedMap.set(key, item);
-        }
+    if (item && item.id && item.id !== 'apt_101' && item.id !== 'apt_102') {
+      const existing = mergedMap.get(item.id);
+      if (!existing || item.updatedAt >= existing.updatedAt) {
+        mergedMap.set(item.id, item);
       }
     }
   });
 
   const merged = Array.from(mergedMap.values());
-  merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return merged;
 }
 
